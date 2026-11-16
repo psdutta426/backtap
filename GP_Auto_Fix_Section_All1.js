@@ -373,30 +373,114 @@ async function fixStudent() {
             address.value.trim().replace(/\s+/g, " ")
         );
 
-        // 2. Mobile number handling
-        const mobile = document.getElementById("phoneNo");
-        const alt = document.getElementById("secondaryMobile");
+       
+// 2. MOBILE NUMBER HANDLING
 
-        if (mobile && alt) {
-            const primary = mobile.value.trim();
-            const alternate = alt.value.trim();
+const mobile =
+    document.querySelector(
+        '#phoneNo, input[formcontrolname="phoneNo"]'
+    );
 
-            if (!primary && alternate) {
-                setValue(mobile, alternate);
-                setValue(alt, "");
+const alt =
+    document.querySelector(
+        '#secondaryMobile, ' +
+        '#alternateMobile, ' +
+        '#alternateMobileNo, ' +
+        'input[formcontrolname="secondaryMobile"], ' +
+        'input[formcontrolname="alternateMobile"], ' +
+        'input[name="secondaryMobile"], ' +
+        'input[name="alternateMobile"], ' +
+        'input[id*="alternate" i], ' +
+        'input[name*="alternate" i]'
+    );
 
-                say("Alternate mobile moved to primary");
+function forceClear(el) {
+    if (!el) return false;
 
-            } else if (
-                primary &&
-                alternate &&
-                primary === alternate
-            ) {
-                setValue(alt, "");
+    // Use native input value setter
+    const setter = Object.getOwnPropertyDescriptor(
+        HTMLInputElement.prototype,
+        "value"
+    )?.set;
 
-                say("Duplicate mobile detected; alternate cleared");
-            }
+    if (setter) setter.call(el, "");
+    else el.value = "";
+
+    el.dispatchEvent(
+        new Event("input", { bubbles: true })
+    );
+
+    el.dispatchEvent(
+        new Event("change", { bubbles: true })
+    );
+
+    el.dispatchEvent(
+        new Event("blur", { bubbles: true })
+    );
+
+    el.blur();
+
+    return el.value.trim() === "";
+}
+
+if (mobile && alt) {
+    const primary = mobile.value.trim();
+    const alternate = alt.value.trim();
+
+    if (!primary && alternate) {
+        // Primary missing: copy alternate to primary
+        setValue(mobile, alternate);
+
+        say("Alternate copied to primary");
+
+        // Clear alternate
+        forceClear(alt);
+
+        if (alt.value.trim() !== "") {
+            await wait(300);
+            forceClear(alt);
         }
+
+        say(
+            alt.value.trim() === ""
+                ? "Alternate cleared successfully"
+                : "WARNING: Alternate could not be cleared"
+        );
+
+    } else if (
+        primary &&
+        alternate &&
+        primary === alternate
+    ) {
+        // Both numbers same: clear alternate
+        forceClear(alt);
+
+        if (alt.value.trim() !== "") {
+            await wait(300);
+            forceClear(alt);
+        }
+
+        say(
+            alt.value.trim() === ""
+                ? "Duplicate alternate cleared"
+                : "WARNING: Duplicate alternate could not be cleared"
+        );
+
+    } else if (primary && alternate) {
+        // Different numbers: leave both unchanged
+        say("Both different numbers retained");
+
+    } else {
+        say("No mobile number changes required");
+    }
+
+} else {
+    say(
+        "Mobile field not found. Primary: " +
+        !!mobile + ", Alternate: " + !!alt
+    );
+}
+
 
         // 3. Clear email field
         const emailFields = document.querySelectorAll(

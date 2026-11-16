@@ -132,6 +132,7 @@ function say(msg) {
     status.innerHTML =
         `Completed: ${S.done.length}<br>` +
         `Failed: ${S.failed.length}<br>` +
+        `ER1065 logged: ${skipList.filter(x => x.type === "er1065").length}<br>` +
         `Temporary adjustments: ${adjustmentList.length}<br>` +
         `Current PEN: ${S.current || "-"}<br>` +
         `Page start: ${S.targetStart || "-"}<br>` +
@@ -279,6 +280,33 @@ function updateTemporaryStatus(pen, result) {
         item.verifiedAt = new Date().toISOString();
         saveAdjustments();
     }
+}
+
+function recordER1065(pen, mobile) {
+    const key = String(pen);
+    const existing = skipList.find(
+        x => String(x.pen) === key && x.type === "er1065"
+    );
+
+    if (existing) {
+        existing.occurrences = (Number(existing.occurrences) || 1) + 1;
+        existing.lastSeen = new Date().toISOString();
+        existing.mobile = mobile || existing.mobile || "";
+    } else {
+        skipList.push({
+            type: "er1065",
+            pen: key,
+            name: S.name || "",
+            mobile: mobile || "",
+            reason: "ER1065 - mobile number already registered with 5 students",
+            occurrences: 1,
+            added: new Date().toISOString(),
+            lastSeen: new Date().toISOString()
+        });
+    }
+
+    saveSkipList();
+    say("ER1065 logged for PEN " + key + "; mobile: " + (mobile || "not available"));
 }
 
 function incrementLastDigit(value) {
@@ -468,10 +496,11 @@ async function fixStudent() {
         say("Submitting " + S.current);
         submit.click();
 
-        // 7. CHECK ER1065
+        // 7. CHECK ER1065 AFTER THIS SAVE ATTEMPT
+        // Wait up to 12 seconds for the server validation response.
         let duplicateError = false;
 
-        for (let i = 0; i < 24; i++) {
+        for (let i = 0; i < 48; i++) {
             await wait(250);
 
             if (hasER1065()) {
@@ -480,85 +509,13 @@ async function fixStudent() {
             }
         }
 
-        // 8. ER1065: CHANGE LAST DIGIT AND RETRY ONCE
+        // 8. LOG ER1065 AND SKIP THIS STUDENT; DO NOT ALTER CONTACT NUMBERS
         if (duplicateError) {
-            say("ER1065 detected");
-
-            const mobile = document.getElementById("phoneNo");
-
-            if (!mobile || !mobile.value.trim()) {
-                skipStudent("ER1065: Primary mobile number missing");
-                return;
-            }
-
-            const original = mobile.value.trim();
-            const adjusted = incrementLastDigit(original);
-
+            const mobile = document.getElementById("phoneNo")?.value.trim() || "";
+            recordER1065(S.current, mobile);
             dismissErrorMessage();
-            await wait(700);
-
-            for (let i = 0; i < 12 && hasER1065(); i++) {
-                await wait(250);
-            }
-
-            if (hasER1065()) {
-                skipStudent(
-                    "ER1065 message did not clear; retry not attempted"
-                );
-                return;
-            }
-
-            setValue(mobile, adjusted);
-
-            say("Retrying once with adjusted primary number");
-
-            const retryButton =
-                document.querySelector('button[type="submit"]') ||
-                [...document.querySelectorAll("button")].find(
-                    p => /save|update/i.test(p.innerText)
-                );
-
-            if (!retryButton) {
-                recordTemporaryMobile(
-                    S.current,
-                    original,
-                    adjusted,
-                    "Retry button missing"
-                );
-
-                skipStudent("ER1065: Retry button missing");
-                return;
-            }
-
-            retryButton.click();
-
-            let retryError = false;
-
-            for (let i = 0; i < 24; i++) {
-                await wait(250);
-
-                if (hasER1065()) {
-                    retryError = true;
-                    break;
-                }
-            }
-
-            recordTemporaryMobile(
-                S.current,
-                original,
-                adjusted,
-                retryError
-                    ? "ER1065 still present after retry"
-                    : "Retry submitted; awaiting GP verification"
-            );
-
-            if (retryError) {
-                dismissErrorMessage();
-                skipStudent("ER1065 still present after one retry");
-                return;
-            }
-
-            say("Retry submitted; checking GP status");
+            skipStudent("ER1065: duplicate mobile number; logged for manual correction");
+            return;
         }
 
         // 9. CLOSE MODAL AND RETURN
@@ -780,6 +737,7 @@ async function tick() {
         say("ALL PAGES CHECKED");
         say("Completed: " + S.done.length);
         say("Failed / permanently skipped: " + skipList.length);
+        say("ER1065 records: " + skipList.filter(x => x.type === "er1065").length);
         say("Temporary adjustments: " + adjustmentList.length);
 
         if (skipList.length || adjustmentList.length) {
@@ -913,6 +871,7 @@ panel.querySelector("#gpFile").onchange = async e => {
 
             if (!isSkipped(x.pen)) {
                 skipList.push({
+                    ...x,
                     pen: String(x.pen),
                     name: x.name || "",
                     reason: x.reason || "Imported skip",

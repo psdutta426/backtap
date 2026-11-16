@@ -351,6 +351,7 @@ function dismissErrorMessage() {
     return false;
 }
 
+
 async function fixStudent() {
     if (S.busy || S.phase !== "opening") return;
 
@@ -361,227 +362,150 @@ async function fixStudent() {
     say("Editing: " + S.name);
 
     try {
-        // 1. Clean address
-        const address = document.getElementById("address");
+        // 1. ADDRESS CLEANING
+        const a = document.getElementById("address");
 
-        if (!address) {
-            throw Error("Address field missing");
-        }
-
-        setValue(
-            address,
-            address.value.trim().replace(/\s+/g, " ")
-        );
-
-       
-// 2. MOBILE NUMBER HANDLING
-
-const mobile =
-    document.querySelector(
-        '#phoneNo, input[formcontrolname="phoneNo"]'
-    );
-
-const alt =
-    document.querySelector(
-        '#secondaryMobile, ' +
-        '#alternateMobile, ' +
-        '#alternateMobileNo, ' +
-        'input[formcontrolname="secondaryMobile"], ' +
-        'input[formcontrolname="alternateMobile"], ' +
-        'input[name="secondaryMobile"], ' +
-        'input[name="alternateMobile"], ' +
-        'input[id*="alternate" i], ' +
-        'input[name*="alternate" i]'
-    );
-
-function forceClear(el) {
-    if (!el) return false;
-
-    // Use native input value setter
-    const setter = Object.getOwnPropertyDescriptor(
-        HTMLInputElement.prototype,
-        "value"
-    )?.set;
-
-    if (setter) setter.call(el, "");
-    else el.value = "";
-
-    el.dispatchEvent(
-        new Event("input", { bubbles: true })
-    );
-
-    el.dispatchEvent(
-        new Event("change", { bubbles: true })
-    );
-
-    el.dispatchEvent(
-        new Event("blur", { bubbles: true })
-    );
-
-    el.blur();
-
-    return el.value.trim() === "";
-}
-
-if (mobile && alt) {
-    const primary = mobile.value.trim();
-    const alternate = alt.value.trim();
-
-    if (!primary && alternate) {
-        // Primary missing: copy alternate to primary
-        setValue(mobile, alternate);
-
-        say("Alternate copied to primary");
-
-        // Clear alternate
-        forceClear(alt);
-
-        if (alt.value.trim() !== "") {
-            await wait(300);
-            forceClear(alt);
-        }
-
-        say(
-            alt.value.trim() === ""
-                ? "Alternate cleared successfully"
-                : "WARNING: Alternate could not be cleared"
-        );
-
-    } else if (
-        primary &&
-        alternate &&
-        primary === alternate
-    ) {
-        // Both numbers same: clear alternate
-        forceClear(alt);
-
-        if (alt.value.trim() !== "") {
-            await wait(300);
-            forceClear(alt);
-        }
-
-        say(
-            alt.value.trim() === ""
-                ? "Duplicate alternate cleared"
-                : "WARNING: Duplicate alternate could not be cleared"
-        );
-
-    } else if (primary && alternate) {
-        // Different numbers: leave both unchanged
-        say("Both different numbers retained");
-
-    } else {
-        say("No mobile number changes required");
-    }
-
-} else {
-    say(
-        "Mobile field not found. Primary: " +
-        !!mobile + ", Alternate: " + !!alt
-    );
-}
-
-
-        // 3. Clear email field
-        const emailFields = document.querySelectorAll(
-            'input[type="email"],' +
-            'input[id*="email" i],' +
-            'input[name*="email" i],' +
-            'input[formcontrolname*="email" i],' +
-            'textarea[id*="email" i],' +
-            'textarea[name*="email" i],' +
-            'textarea[formcontrolname*="email" i]'
-        );
-
-        emailFields.forEach(el => setValue(el, ""));
-
-        say("Email field cleared");
-
-        // 4. Select Bengali
-        const mother = document.getElementById("motherTongue");
-
-        const container = mother?.querySelector(
-            ".ng-select-container"
-        );
-
-        if (!container) {
-            throw Error("Mother Tongue dropdown missing");
-        }
-
-        container.dispatchEvent(new MouseEvent(
-            "mousedown",
-            { bubbles: true, cancelable: true }
-        ));
-
-        container.dispatchEvent(new MouseEvent(
-            "click",
-            { bubbles: true, cancelable: true }
-        ));
-
-        let option = null;
-
-        for (let i = 0; i < 40 && !option; i++) {
-            await wait(250);
-
-            option = [...document.querySelectorAll(
-                ".ng-dropdown-panel .ng-option"
-            )].find(o =>
-                (o.innerText || o.textContent || "")
-                    .toLowerCase().includes("3-bengali")
+        if (a) {
+            setValue(
+                a,
+                a.value.trim().replace(/\s+/g, " ")
             );
         }
 
-        if (!option) {
-            throw Error("3-Bengali option missing");
+        // 2. MOBILE NUMBER FIXING
+        const b = document.getElementById("phoneNo");
+        const c = document.getElementById("secondaryMobile");
+
+        if (b && c) {
+            const primary = b.value.trim();
+            const alternate = c.value.trim();
+
+            if (!primary && alternate) {
+                // Copy alternate to missing primary
+                setValue(b, alternate);
+
+                // Clear alternate after copying
+                setValue(c, "");
+
+                say("Alternate copied to primary and cleared");
+
+            } else if (
+                primary &&
+                alternate &&
+                primary === alternate
+            ) {
+                // Same numbers: clear alternate
+                setValue(c, "");
+
+                say("Duplicate alternate number cleared");
+
+            } else if (primary && alternate) {
+                // Different numbers: keep both
+                say("Different mobile numbers retained");
+
+            } else {
+                say("Mobile numbers checked");
+            }
         }
 
-        option.click();
-        await wait(400);
+        // 3. CLEAR EMAIL
+        document.querySelectorAll(
+            'input[type="email"],' +
+            'input[id*="email" i],' +
+            'input[name*="email" i],' +
+            'input[formcontrolname*="email" i]'
+        ).forEach(el => setValue(el, ""));
 
-        // 5. Select Investigation blood group
-        const blood =
+        say("Email cleared");
+
+        // 4. MOTHER TONGUE: 3-BENGALI
+        const f = document.getElementById("motherTongue");
+
+        if (!f) {
+            throw Error("Mother Tongue field missing");
+        }
+
+        const g = f.querySelector(".ng-select-container");
+
+        if (g) {
+            g.dispatchEvent(new MouseEvent("mousedown", {
+                bubbles: true,
+                cancelable: true
+            }));
+
+            g.dispatchEvent(new MouseEvent("click", {
+                bubbles: true,
+                cancelable: true
+            }));
+        }
+
+        await wait(200);
+
+        const options = document.querySelectorAll(
+            ".ng-dropdown-panel .ng-option"
+        );
+
+        let selected = null;
+
+        options.forEach(option => {
+            const value = option.innerText ||
+                          option.textContent || "";
+
+            if (value.toLowerCase().includes("3-bengali")) {
+                selected = option;
+            }
+        });
+
+        if (!selected) {
+            throw Error("3-Bengali option not found");
+        }
+
+        selected.click();
+
+        await wait(150);
+
+        // 5. BLOOD GROUP: INVESTIGATION
+        const m =
             document.getElementById("bloodGroup") ||
             document.querySelector(
                 'select[formcontrolname="bloodGroup"]'
             );
 
-        if (!blood) {
-            throw Error("Blood Group field missing");
+        if (m) {
+            for (let n = 0; n < m.options.length; n++) {
+                if (
+                    m.options[n].text.toLowerCase()
+                        .includes("investigation")
+                ) {
+                    m.selectedIndex = n;
+                    break;
+                }
+            }
+
+            m.dispatchEvent(
+                new Event("change", { bubbles: true })
+            );
         }
 
-        const index = [...blood.options].findIndex(o =>
-            o.text.toLowerCase().includes("investigation")
-        );
+        await wait(300);
 
-        if (index < 0) {
-            throw Error("Investigation option missing");
-        }
-
-        blood.selectedIndex = index;
-
-        blood.dispatchEvent(
-            new Event("change", { bubbles: true })
-        );
-
-        await wait(500);
-
-        // 6. Submit
+        // 6. SUBMIT
         const submit =
             document.querySelector('button[type="submit"]') ||
-            [...document.querySelectorAll("button")].find(b =>
-                /save|update/i.test(b.innerText)
+            [...document.querySelectorAll("button")].find(
+                p => /save|update/i.test(p.innerText)
             );
 
         if (!submit) {
-            throw Error("Submit button missing");
+            throw Error("Submit button not found");
         }
 
         S.phase = "saving";
-        say("Saving: " + S.current);
+        say("Submitting " + S.current);
 
         submit.click();
 
-        // 7. First save response check
+        // 7. CHECK ER1065
         let duplicateError = false;
 
         for (let i = 0; i < 24; i++) {
@@ -593,38 +517,23 @@ if (mobile && alt) {
             }
         }
 
-        // 8. ER1065: adjust primary number and retry once
+        // 8. ER1065: INCREMENT LAST DIGIT AND RETRY ONCE
         if (duplicateError) {
             say("ER1065 detected");
 
-            const mobileNow =
-                document.getElementById("phoneNo");
+            const mobile = document.getElementById("phoneNo");
 
-            if (!mobileNow || !mobileNow.value.trim()) {
-                skipStudent(
-                    "ER1065: Primary mobile number missing"
-                );
+            if (!mobile || !mobile.value.trim()) {
+                skipStudent("ER1065: Primary mobile missing");
                 return;
             }
 
-            const original = mobileNow.value.trim();
+            const original = mobile.value.trim();
+            const adjusted = incrementLastDigit(original);
 
-            let adjusted;
-
-            try {
-                adjusted = incrementLastDigit(original);
-            } catch (e) {
-                skipStudent(
-                    "ER1065: " + e.message
-                );
-                return;
-            }
-
-            // Dismiss the error dialog if present
             dismissErrorMessage();
             await wait(700);
 
-            // Wait for the old error message to disappear
             for (let i = 0; i < 12 && hasER1065(); i++) {
                 await wait(250);
             }
@@ -636,19 +545,14 @@ if (mobile && alt) {
                 return;
             }
 
-            // Change only the final digit of primary mobile
-            setValue(mobileNow, adjusted);
+            setValue(mobile, adjusted);
 
-            say(
-                "Retrying once: " +
-                original + " → " + adjusted
-            );
+            say("Retrying with adjusted primary number");
 
-            // Find submit button again
             const retryButton =
                 document.querySelector('button[type="submit"]') ||
-                [...document.querySelectorAll("button")].find(b =>
-                    /save|update/i.test(b.innerText)
+                [...document.querySelectorAll("button")].find(
+                    p => /save|update/i.test(p.innerText)
                 );
 
             if (!retryButton) {
@@ -659,15 +563,12 @@ if (mobile && alt) {
                     "Retry button missing"
                 );
 
-                skipStudent(
-                    "ER1065: Retry button missing"
-                );
+                skipStudent("ER1065: Retry button missing");
                 return;
             }
 
             retryButton.click();
 
-            // Check retry response
             let retryError = false;
 
             for (let i = 0; i < 24; i++) {
@@ -684,7 +585,7 @@ if (mobile && alt) {
                 original,
                 adjusted,
                 retryError
-                    ? "ER1065 still present after retry"
+                    ? "Retry failed: ER1065 remains"
                     : "Retry submitted; awaiting GP verification"
             );
 
@@ -697,27 +598,38 @@ if (mobile && alt) {
                 return;
             }
 
-            say("Retry submitted; checking saved status");
+            say("Retry submitted");
         }
 
-        // 9. Normal success/modal behaviour
-        if (isGPPage()) {
-            const close = document.querySelector(
-                ".modal.show .btn-close, " +
-                ".modal.show button[data-bs-dismiss='modal'], " +
-                ".swal2-confirm"
-            );
+        // 9. CLOSE MESSAGE AND RETURN
+        let returned = false;
 
-            if (close) {
-                close.click();
-                await wait(500);
-            }
-        }
+        function goBack() {
+            if (returned) return;
+            returned = true;
 
-        if (isGPPage()) {
             S.phase = "returning";
             history.back();
         }
+
+        const closeTimer = setInterval(() => {
+            const t = document.querySelector(
+                ".modal.show .btn-close, " +
+                ".modal.show button[data-bs-dismiss='modal'], " +
+                ".swal2-confirm, .swal2-close"
+            );
+
+            if (t) {
+                t.click();
+                clearInterval(closeTimer);
+                setTimeout(goBack, 500);
+            }
+        }, 300);
+
+        setTimeout(() => {
+            clearInterval(closeTimer);
+            goBack();
+        }, 3500);
 
     } catch (e) {
         skipStudent(e.message || String(e));
@@ -726,6 +638,7 @@ if (mobile && alt) {
         S.busy = false;
     }
 }
+
 
 async function restorePage() {
     const current = rangeStart();

@@ -83,7 +83,7 @@ function exportSkipList() {
 const panel = document.createElement("div");
 
 panel.style.cssText =
-    "position:fixed;right:15px;top:100px;width:300px;" +
+    "position:fixed;left:15px;top:100px;width:300px;" +
     "z-index:999999;background:#172b40;color:white;" +
     "padding:14px;border-radius:10px;font:13px Arial;" +
     "box-shadow:0 3px 15px #0008;max-height:80vh;overflow:auto";
